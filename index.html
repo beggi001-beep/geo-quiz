@@ -210,6 +210,23 @@ function ac(){
   if(SFX.ctx.state==="suspended")SFX.ctx.resume();
   return SFX.ctx;
 }
+// iPhone: opna fyrir hljóð við fyrstu snertingu og láta hljóðið virka þó síminn sé á hljóðlausu
+function silentWav(){const n=800,b=new Uint8Array(44+n),v=new DataView(b.buffer),w=(o,t)=>[...t].forEach((c,i)=>b[o+i]=c.charCodeAt(0));
+  w(0,"RIFF");v.setUint32(4,36+n,true);w(8,"WAVEfmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,8000,true);v.setUint32(28,8000,true);v.setUint16(32,1,true);v.setUint16(34,8,true);w(36,"data");v.setUint32(40,n,true);b.fill(128,44);
+  let s="";b.forEach(x=>s+=String.fromCharCode(x));return "data:audio/wav;base64,"+btoa(s);}
+let AUDIO_UNLOCKED=false;
+function unlockAudio(){
+  try{if(navigator.audioSession)navigator.audioSession.type="playback"}catch(e){}
+  try{if(!SFX.keep){const a=new Audio(silentWav());a.loop=true;a.setAttribute("playsinline","");a.volume=0.01;SFX.keep=a}
+      const pr=SFX.keep.play();if(pr&&pr.catch)pr.catch(()=>{})}catch(e){}
+  const c=ac();
+  if(c){try{const b=c.createBuffer(1,1,22050),src=c.createBufferSource();src.buffer=b;src.connect(c.destination);src.start(0)}catch(e){}}
+  if(!AUDIO_UNLOCKED&&window.speechSynthesis){try{const u=new SpeechSynthesisUtterance(" ");u.volume=0;speechSynthesis.speak(u)}catch(e){}}
+  AUDIO_UNLOCKED=true;
+}
+["touchend","pointerdown","click","keydown"].forEach(ev=>document.addEventListener(ev,unlockAudio,{capture:true,passive:true}));
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&SFX.ctx&&SFX.ctx.state!=="running")SFX.ctx.resume()});
 function tone(f,start,dur,type="sine",vol=.3,f2){
   const c=ac();if(!c||!SFX.on)return;
   const o=c.createOscillator(),g=c.createGain(),t0=c.currentTime+start;
@@ -298,7 +315,7 @@ function say(text){
   speechSynthesis.cancel();speechSynthesis.speak(u);
 }
 function toggleSound(){
-  SFX.on=!SFX.on;store.set("geo_sound",SFX.on?"on":"off");
+  SFX.on=!SFX.on;store.set("geo_sound",SFX.on?"on":"off");if(SFX.on)unlockAudio();
   if(!SFX.on){stopSuspense();try{speechSynthesis.cancel()}catch(e){}}
   rerender();
 }

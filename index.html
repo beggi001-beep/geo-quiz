@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="is">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Landafræðikeppni</title>
+<style>
+  :root{
+    --bg:#0f1b2d;--card:#18294a;--text:#f2f5fa;--muted:#9fb0cc;
+    --accent:#ffb627;--good:#2ecc71;--bad:#e74c3c;--btn:#22385f;--btnh:#2c4877;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+  .wrap{max-width:760px;margin:0 auto;padding:16px}
+  h1{font-size:1.8rem;margin:.4em 0;text-align:center}
+  h2{margin:.3em 0}
+  .card{background:var(--card);border-radius:16px;padding:18px;margin:12px 0;box-shadow:0 4px 18px rgba(0,0,0,.25)}
+  .muted{color:var(--muted)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  button{font:inherit;border:0;border-radius:12px;padding:12px 16px;background:var(--btn);color:var(--text);cursor:pointer}
+  button:hover{background:var(--btnh)}
+  button.primary{background:var(--accent);color:#1a1a1a;font-weight:700;font-size:1.1rem;width:100%;padding:16px}
+  button.sel{outline:3px solid var(--accent)}
+  input[type=text]{font:inherit;padding:12px;border-radius:12px;border:0;flex:1;min-width:0}
+  .chip{background:var(--btn);padding:8px 12px;border-radius:20px;display:inline-flex;gap:8px;align-items:center}
+  .chip b{cursor:pointer;color:var(--muted)}
+  .lang{position:absolute;top:12px;right:12px}
+  .turn{text-align:center;font-size:1.3rem}
+  .turn strong{color:var(--accent);font-size:1.6rem;display:block}
+  .qtext{font-size:1.35rem;text-align:center;margin:10px 0 16px}
+  .flag{display:block;margin:0 auto 12px;max-width:260px;width:70%;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,.4)}
+  .emoji{font-size:6rem;text-align:center;display:none}
+  .opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .opt{text-align:left;padding:14px;font-size:1.05rem;display:flex;gap:10px;align-items:center}
+  .opt .l{background:rgba(255,255,255,.15);border-radius:8px;min-width:30px;text-align:center;padding:2px 0;font-weight:700}
+  .opt.good{background:var(--good)} .opt.bad{background:var(--bad)}
+  .opt:disabled{cursor:default}
+  .result{text-align:center;font-size:1.3rem;margin:12px 0;min-height:1.6em}
+  .scores{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px}
+  .score{background:var(--btn);border-radius:10px;padding:6px 12px}
+  .score.active{outline:2px solid var(--accent)}
+  table{width:100%;border-collapse:collapse;font-size:1.2rem}
+  td{padding:10px;border-bottom:1px solid rgba(255,255,255,.1)}
+  td:last-child{text-align:right;font-weight:700}
+  .progress{text-align:center;color:var(--muted);margin-bottom:6px}
+  @media (max-width:480px){.opts{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<script>
+// Gögn: kóði|nafn IS|nafn EN|höfuðborg IS|höfuðborg EN|borg IS|borg EN|svæði|erfiðleiki (1-3)
+const RAW = [
+"is|Ísland|Iceland|Reykjavík|Reykjavík|Akureyri|Akureyri|eu|1",
+"no|Noregur|Norway|Ósló|Oslo|Bergen|Bergen|eu|1",
+"se|Svíþjóð|Sweden|Stokkhólmur|Stockholm|Gautaborg|Gothenburg|eu|1",
+"dk|Danmörk|Denmark|Kaupmannahöfn|Copenhagen|Árósar|Aarhus|eu|1",
+"fi|Finnland|Finland|Helsinki|Helsinki|Tampere|Tampere|eu|1",
+"gb|Bretland|United Kingdom|London|London|Manchester|Manchester|eu|1",
+"ie|Írland|Ireland|Dublin|Dublin|Cork|Cork|eu|1",
+"fr|Frakkland|France|París|Paris|Marseille|Marseille|eu|1",
+"de|Þýskaland|Germany|Berlín|Berlin|München|Munich|eu|1",
+"es|Spánn|Spain|Madríd|Madrid|Barcelona|Barcelona|eu|1",
+"pt|Portúgal|Portugal|Lissabon|Lisbon|Portó|Porto|eu|1",
+"it|Ítalía|Italy|Róm|Rome|Mílanó|Milan|eu|1",
+"nl|Holland|Netherlands|Amsterdam|Amsterdam|Rotterdam|Rotterdam|eu|1",
+"be|Belgía|Belgium|Brussel|Brussels|Antwerpen|Antwerp|eu|2",
+"ch|Sviss|Switzerland|Bern|Bern|Zürich|Zurich|eu|2",
+"at|Austurríki|Austria|Vín|Vienna|Salzburg|Salzburg|eu|2",
+"pl|Pólland|Poland|Varsjá|Warsaw|Kraká|Kraków|eu|2",
+"cz|Tékkland|Czechia|Prag|Prague|Brno|Brno|eu|2",
+"gr|Grikkland|Greece|Aþena|Athens|Þessaloníka|Thessaloniki|eu|1",
+"hu|Ungverjaland|Hungary|Búdapest|Budapest|Debrecen|Debrecen|eu|2",
+"hr|Króatía|Croatia|Zagreb|Zagreb|Split|Split|eu|2",
+"ee|Eistland|Estonia|Tallinn|Tallinn|Tartu|Tartu|eu|2",
+"lv|Lettland|Latvia|Ríga|Riga|Daugavpils|Daugavpils|eu|3",
+"lt|Litháen|Lithuania|Vilníus|Vilnius|Kaunas|Kaunas|eu|3",
+"ua|Úkraína|Ukraine|Kænugarður|Kyiv|Lviv|Lviv|eu|2",
+"ro|Rúmenía|Romania|Búkarest|Bucharest|Cluj-Napoca|Cluj-Napoca|eu|2",
+"bg|Búlgaría|Bulgaria|Sófía|Sofia|Plovdiv|Plovdiv|eu|3",
+"rs|Serbía|Serbia|Belgrad|Belgrade|Novi Sad|Novi Sad|eu|3",
+"sk|Slóvakía|Slovakia|Bratislava|Bratislava|Košice|Košice|eu|3",
+"si|Slóvenía|Slovenia|Ljúbljana|Ljubljana|Maribor|Maribor|eu|3",
+"al|Albanía|Albania|Tírana|Tirana|Durrës|Durrës|eu|3",
+"mt|Malta|Malta|Valletta|Valletta|Birkirkara|Birkirkara|eu|3",
+"cy|Kýpur|Cyprus|Nikósía|Nicosia|Limassol|Limassol|eu|3",
+"tr|Tyrkland|Turkey|Ankara|Ankara|Istanbúl|Istanbul|as|2",
+"ru|Rússland|Russia|Moskva|Moscow|Sankti Pétursborg|Saint Petersburg|eu|1",
+"us|Bandaríkin|United States|Washington|Washington|New York|New York|am|1",
+"ca|Kanada|Canada|Ottawa|Ottawa|Toronto|Toronto|am|1",
+"mx|Mexíkó|Mexico|Mexíkóborg|Mexico City|Guadalajara|Guadalajara|am|1",
+"br|Brasilía|Brazil|Brasilía|Brasília|Ríó de Janeiró|Rio de Janeiro|am|1",
+"ar|Argentína|Argentina|Búenos Aíres|Buenos Aires|Córdoba|Córdoba|am|1",
+"cl|Síle|Chile|Santíagó|Santiago|Valparaíso|Valparaíso|am|2",
+"pe|Perú|Peru|Líma|Lima|Cusco|Cusco|am|2",
+"co|Kólumbía|Colombia|Bógóta|Bogotá|Medellín|Medellín|am|2",
+"uy|Úrúgvæ|Uruguay|Montevídeó|Montevideo|Salto|Salto|am|3",
+"py|Paragvæ|Paraguay|Asúnsjón|Asunción|Ciudad del Este|Ciudad del Este|am|3",
+"cu|Kúba|Cuba|Havana|Havana|Santiago de Cuba|Santiago de Cuba|am|2",
+"jm|Jamaíka|Jamaica|Kingston|Kingston|Montego Bay|Montego Bay|am|2",
+"eg|Egyptaland|Egypt|Kaíró|Cairo|Alexandría|Alexandria|af|1",
+"ma|Marokkó|Morocco|Rabat|Rabat|Marrakess|Marrakesh|af|2",
+"za|Suður-Afríka|South Africa|Pretóría|Pretoria|Höfðaborg|Cape Town|af|2",
+"ng|Nígería|Nigeria|Abúja|Abuja|Lagos|Lagos|af|2",
+"ke|Kenía|Kenya|Naíróbí|Nairobi|Mombasa|Mombasa|af|2",
+"et|Eþíópía|Ethiopia|Addis Ababa|Addis Ababa|Gondar|Gondar|af|3",
+"gh|Gana|Ghana|Akkra|Accra|Kumasi|Kumasi|af|3",
+"mg|Madagaskar|Madagascar|Antananarívó|Antananarivo|Toamasina|Toamasina|af|3",
+"cn|Kína|China|Peking|Beijing|Sjanghæ|Shanghai|as|1",
+"jp|Japan|Japan|Tókýó|Tokyo|Ósaka|Osaka|as|1",
+"kr|Suður-Kórea|South Korea|Seúl|Seoul|Busan|Busan|as|2",
+"in|Indland|India|Nýja-Delí|New Delhi|Mumbaí|Mumbai|as|1",
+"th|Taíland|Thailand|Bangkok|Bangkok|Chiang Mai|Chiang Mai|as|1",
+"vn|Víetnam|Vietnam|Hanoí|Hanoi|Ho Chi Minh-borg|Ho Chi Minh City|as|2",
+"id|Indónesía|Indonesia|Djakarta|Jakarta|Surabaya|Surabaya|as|2",
+"ph|Filippseyjar|Philippines|Maníla|Manila|Cebu|Cebu|as|2",
+"pk|Pakistan|Pakistan|Íslamabad|Islamabad|Karachi|Karachi|as|3",
+"sa|Sádi-Arabía|Saudi Arabia|Ríjad|Riyadh|Jedda|Jeddah|as|2",
+"ae|Sameinuðu arabísku furstadæmin|United Arab Emirates|Abú Dabí|Abu Dhabi|Dúbaí|Dubai|as|2",
+"ir|Íran|Iran|Teheran|Tehran|Isfahan|Isfahan|as|2",
+"kz|Kasakstan|Kazakhstan|Astana|Astana|Almaty|Almaty|as|3",
+"mn|Mongólía|Mongolia|Úlan Bator|Ulaanbaatar|Erdenet|Erdenet|as|3",
+"np|Nepal|Nepal|Katmandú|Kathmandu|Pokhara|Pokhara|as|3",
+"bt|Bútan|Bhutan|Thimphu|Thimphu|||as|3",
+"au|Ástralía|Australia|Canberra|Canberra|Sydney|Sydney|oc|1",
+"nz|Nýja-Sjáland|New Zealand|Wellington|Wellington|Auckland|Auckland|oc|1",
+"fj|Fídjíeyjar|Fiji|Suva|Suva|Nadi|Nadi|oc|3",
+"to|Tonga|Tonga|Nuku'alofa|Nuku'alofa|||oc|3",
+"ws|Samóa|Samoa|Apía|Apia|||oc|3",
+"ki|Kíribatí|Kiribati|Tarawa|Tarawa|||oc|3"
+];
+const C = RAW.map(r=>{const p=r.split("|");return{code:p[0],name:{is:p[1],en:p[2]},cap:{is:p[3],en:p[4]},city:p[5]?{is:p[5],en:p[6]}:null,reg:p[7],lvl:+p[8]};});
+
+const T = {
+  is:{title:"🌍 Landafræðikeppni",players:"Leikmenn",addPh:"Nafn leikmanns",add:"Bæta við",rounds:"Spurningar á mann",diff:"Erfiðleiki",
+      d1:"Auðvelt",d2:"Miðlungs",d3:"Erfitt",types:"Tegundir spurninga",tFlag:"Fánar",tCap:"Höfuðborgir",tCity:"Borgir",start:"Byrja leik!",
+      needP:"Bættu við að minnsta kosti einum leikmanni.",turn:"Röðin er komin að",ready:"Tilbúin(n)!",
+      qFlag:"Hvaða land á þennan fána?",qCap:"Hver er höfuðborg {x}?",qCity:"Í hvaða landi er borgin {x}?",
+      right:"Rétt! 🎉",wrong:"Rangt! Rétta svarið er {x}",next:"Næsta",results:"Úrslit 🏆",winner:"Sigurvegari: {x}!",tie:"Jafntefli!",
+      again:"Spila aftur",newGame:"Nýr leikur",q:"Spurning {a} af {b}",pts:"stig",lang:"English"},
+  en:{title:"🌍 Geography Quiz",players:"Players",addPh:"Player name",add:"Add",rounds:"Questions per player",diff:"Difficulty",
+      d1:"Easy",d2:"Medium",d3:"Hard",types:"Question types",tFlag:"Flags",tCap:"Capitals",tCity:"Cities",start:"Start game!",
+      needP:"Add at least one player.",turn:"It's the turn of",ready:"Ready!",
+      qFlag:"Which country has this flag?",qCap:"What is the capital of {x}?",qCity:"Which country is the city of {x} in?",
+      right:"Correct! 🎉",wrong:"Wrong! The answer is {x}",next:"Next",results:"Results 🏆",winner:"Winner: {x}!",tie:"It's a tie!",
+      again:"Play again",newGame:"New game",q:"Question {a} of {b}",pts:"pts",lang:"Íslenska"}
+};
+
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+let S = {
+  lang: store.get("geo_lang")||"is",
+  players: JSON.parse(store.get("geo_players")||"[]"),
+  rounds:5, diff:1, types:{flag:true,cap:true,city:true},
+  queue:[], qi:0, scores:{}, used:new Set()
+};
+const t=(k,x)=>T[S.lang][k].replace("{x}",x??"");
+const app=document.getElementById("app");
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const emoji=c=>String.fromCodePoint(...[...c.toUpperCase()].map(ch=>127397+ch.charCodeAt(0)));
+
+function langBtn(){return `<button class="lang" onclick="toggleLang()">${t("lang")}</button>`}
+function toggleLang(){S.lang=S.lang==="is"?"en":"is";store.set("geo_lang",S.lang);document.documentElement.lang=S.lang;rerender()}
+let rerender=renderSetup;
+
+function renderSetup(){
+  rerender=renderSetup;
+  const L=S.lang;
+  app.innerHTML=`${langBtn()}<h1>${t("title")}</h1>
+  <div class="card"><h2>${t("players")}</h2>
+    <div class="row"><input type="text" id="pname" placeholder="${t("addPh")}" maxlength="20"><button onclick="addP()">${t("add")}</button></div>
+    <div class="row" style="margin-top:10px">${S.players.map((p,i)=>`<span class="chip">${esc(p)} <b onclick="remP(${i})">✕</b></span>`).join("")}</div>
+  </div>
+  <div class="card"><h2>${t("rounds")}</h2><div class="row">
+    ${[3,5,10].map(n=>`<button class="${S.rounds===n?"sel":""}" onclick="S.rounds=${n};renderSetup()">${n}</button>`).join("")}</div></div>
+  <div class="card"><h2>${t("diff")}</h2><div class="row">
+    ${[1,2,3].map(n=>`<button class="${S.diff===n?"sel":""}" onclick="S.diff=${n};renderSetup()">${t("d"+n)}</button>`).join("")}</div></div>
+  <div class="card"><h2>${t("types")}</h2><div class="row">
+    ${[["flag","tFlag"],["cap","tCap"],["city","tCity"]].map(([k,l])=>`<button class="${S.types[k]?"sel":""}" onclick="togType('${k}')">${t(l)}</button>`).join("")}</div></div>
+  <p class="muted" id="msg" style="text-align:center"></p>
+  <button class="primary" onclick="startGame()">${t("start")}</button>`;
+  const inp=document.getElementById("pname");
+  inp.addEventListener("keydown",e=>{if(e.key==="Enter")addP()});
+}
+function addP(){const v=document.getElementById("pname").value.trim();if(!v)return;S.players.push(v);store.set("geo_players",JSON.stringify(S.players));renderSetup();document.getElementById("pname").focus()}
+function remP(i){S.players.splice(i,1);store.set("geo_players",JSON.stringify(S.players));renderSetup()}
+function togType(k){const on=Object.values(S.types).filter(Boolean).length;if(S.types[k]&&on===1)return;S.types[k]=!S.types[k];renderSetup()}
+
+function makeQuestion(){
+  const types=Object.keys(S.types).filter(k=>S.types[k]);
+  // Auðvelt = bara stig 1, Miðlungs = 1-2, Erfitt = öll lönd (meira af erfiðum)
+  let pool=C.filter(c=>c.lvl<=S.diff);
+  if(S.diff===3) pool=C.filter(c=>c.lvl>=2);
+  let fresh=pool.filter(c=>!S.used.has(c.code));
+  if(fresh.length<1){S.used.clear();fresh=pool}
+  let type, ans;
+  for(let tries=0;tries<50;tries++){
+    type=types[Math.floor(Math.random()*types.length)];
+    ans=fresh[Math.floor(Math.random()*fresh.length)];
+    if(type!=="city"||ans.city) break;
+  }
+  if(type==="city"&&!ans.city) type="cap";
+  S.used.add(ans.code);
+  // Rangir svarmöguleikar: helst af sama svæði svo þetta sé ekki of augljóst
+  let others=shuffle(C.filter(c=>c.code!==ans.code&&c.reg===ans.reg));
+  if(others.length<5) others=others.concat(shuffle(C.filter(c=>c.code!==ans.code&&c.reg!==ans.reg)));
+  const label=c=>type==="cap"?c.cap:c.name;
+  const seen=new Set([label(ans).en]);
+  const wrong=[];
+  for(const o of others){if(wrong.length===5)break;if(!seen.has(label(o).en)){seen.add(label(o).en);wrong.push(o)}}
+  return{type,ans,opts:shuffle([ans,...wrong])};
+}
+
+function startGame(){
+  if(!S.players.length){document.getElementById("msg").textContent=t("needP");return}
+  S.scores={};S.players.forEach(p=>S.scores[p]=0);
+  S.queue=[];S.used.clear();
+  for(let r=0;r<S.rounds;r++) for(const p of S.players) S.queue.push({player:p,q:makeQuestion()});
+  S.qi=0;
+  renderTurn();
+}
+
+function scoreBar(active){
+  return `<div class="scores">${S.players.map(p=>`<span class="score ${p===active?"active":""}">${esc(p)}: ${S.scores[p]}</span>`).join("")}</div>`;
+}
+function renderTurn(){
+  rerender=renderTurn;
+  const it=S.queue[S.qi];
+  app.innerHTML=`${langBtn()}<h1>${t("title")}</h1>
+  <div class="card turn">${t("turn")}<strong>${esc(it.player)}</strong></div>
+  <button class="primary" onclick="renderQuestion()">${t("ready")}</button>
+  ${scoreBar(it.player)}`;
+}
+function renderQuestion(answered){
+  rerender=()=>renderQuestion(answered);
+  const it=S.queue[S.qi],q=it.q,L=S.lang;
+  let head="";
+  if(q.type==="flag"){
+    head=`<img class="flag" src="https://flagcdn.com/w320/${q.ans.code}.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+          <div class="emoji">${emoji(q.ans.code)}</div><div class="qtext">${t("qFlag")}</div>`;
+  } else if(q.type==="cap"){
+    head=`<div class="qtext">${t("qCap",`<b>${esc(q.ans.name[L])}</b>`)}</div>`;
+  } else {
+    head=`<div class="qtext">${t("qCity",`<b>${esc(q.ans.city[L])}</b>`)}</div>`;
+  }
+  const lab=c=>q.type==="cap"?c.cap[L]:c.name[L];
+  const letters="ABCDEF";
+  const opts=q.opts.map((c,i)=>{
+    let cls="";
+    if(answered!==undefined){ if(c===q.ans)cls="good"; else if(i===answered)cls="bad"; }
+    return `<button class="opt ${cls}" ${answered!==undefined?"disabled":""} onclick="answer(${i})"><span class="l">${letters[i]}</span>${esc(lab(c))}</button>`;
+  }).join("");
+  let res="";
+  if(answered!==undefined){
+    res=q.opts[answered]===q.ans?t("right"):t("wrong",esc(lab(q.ans)));
+  }
+  app.innerHTML=`${langBtn()}<div class="progress">${T[L].q.replace("{a}",S.qi+1).replace("{b}",S.queue.length)} · ${esc(it.player)}</div>
+  <div class="card">${head}<div class="opts">${opts}</div><div class="result">${res}</div>
+  ${answered!==undefined?`<button class="primary" onclick="nextQ()">${t("next")}</button>`:""}</div>
+  ${scoreBar(it.player)}`;
+}
+function answer(i){
+  const it=S.queue[S.qi];
+  if(it.done)return; it.done=true;
+  if(it.q.opts[i]===it.q.ans) S.scores[it.player]++;
+  renderQuestion(i);
+}
+function nextQ(){S.qi++; if(S.qi>=S.queue.length) renderEnd(); else renderTurn();}
+
+function renderEnd(){
+  rerender=renderEnd;
+  const sorted=[...S.players].sort((a,b)=>S.scores[b]-S.scores[a]);
+  const top=S.scores[sorted[0]];
+  const winners=sorted.filter(p=>S.scores[p]===top);
+  const medals=["🥇","🥈","🥉"];
+  app.innerHTML=`${langBtn()}<h1>${t("results")}</h1>
+  <div class="card"><div class="qtext">${winners.length>1&&S.players.length>1?t("tie"):t("winner",esc(winners[0]))}</div>
+  <table>${sorted.map((p,i)=>`<tr><td>${medals[i]||""} ${esc(p)}</td><td>${S.scores[p]} ${t("pts")}</td></tr>`).join("")}</table></div>
+  <button class="primary" onclick="startGame()">${t("again")}</button>
+  <div style="height:10px"></div>
+  <button class="primary" style="background:var(--btn);color:var(--text)" onclick="renderSetup()">${t("newGame")}</button>`;
+}
+
+document.documentElement.lang=S.lang;
+renderSetup();
+</script>
+</body>
+</html>

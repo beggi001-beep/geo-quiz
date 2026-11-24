@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="is">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Landafræðikeppni</title>
+<style>
+  :root{
+    --bg:#0f1b2d;--card:#18294a;--text:#f2f5fa;--muted:#9fb0cc;
+    --accent:#ffb627;--good:#2ecc71;--bad:#e74c3c;--btn:#22385f;--btnh:#2c4877;--hot:#ff5e57;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+  .wrap{max-width:760px;margin:0 auto;padding:60px 16px 16px}
+  h1{font-size:1.8rem;margin:.2em 0;text-align:center}
+  h2{margin:.3em 0}
+  .card{background:var(--card);border-radius:16px;padding:18px;margin:12px 0;box-shadow:0 4px 18px rgba(0,0,0,.25)}
+  .muted{color:var(--muted)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  button{font:inherit;border:0;border-radius:12px;padding:12px 16px;background:var(--btn);color:var(--text);cursor:pointer}
+  button:hover{background:var(--btnh)}
+  button.primary{background:var(--accent);color:#1a1a1a;font-weight:700;font-size:1.1rem;width:100%;padding:16px}
+  button.sel{outline:3px solid var(--accent)}
+  input[type=text]{font:inherit;padding:12px;border-radius:12px;border:0;flex:1;min-width:0}
+  .chip{background:var(--btn);padding:8px 12px;border-radius:20px;display:inline-flex;gap:8px;align-items:center}
+  .chip b{cursor:pointer;color:var(--muted)}
+  .lang{position:absolute;top:12px;right:12px}
+  .snd{position:absolute;top:12px;left:12px}
+  .turn{text-align:center;font-size:1.3rem}
+  .turn strong{color:var(--accent);font-size:1.6rem;display:block}
+  .qtext{font-size:1.35rem;text-align:center;margin:10px 0 16px}
+  .flag{display:block;margin:0 auto 12px;max-width:260px;width:70%;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,.4)}
+  .emoji{font-size:6rem;text-align:center;display:none}
+  .opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .opt{text-align:left;padding:14px;font-size:1.05rem;display:flex;gap:10px;align-items:center}
+  .opt .l{background:rgba(255,255,255,.15);border-radius:8px;min-width:30px;text-align:center;padding:2px 0;font-weight:700}
+  .opt.good{background:var(--good);animation:pop .5s}
+  .opt.bad{background:var(--bad);animation:shake .4s}
+  .opt:disabled{cursor:default}
+  .result{text-align:center;font-size:1.3rem;margin:12px 0;min-height:1.6em}
+  .scores{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px}
+  .score{background:var(--btn);border-radius:10px;padding:6px 12px}
+  .score.active{outline:2px solid var(--accent)}
+  table{width:100%;border-collapse:collapse;font-size:1.2rem}
+  td{padding:10px;border-bottom:1px solid rgba(255,255,255,.1)}
+  td:last-child{text-align:right;font-weight:700}
+  .progress{text-align:center;color:var(--muted);margin-bottom:6px}
+  .banner{text-align:center;font-size:1.5rem;font-weight:800;color:var(--hot);margin:6px 0;animation:pulse 1s infinite}
+  .final .card{box-shadow:0 0 0 2px var(--hot),0 0 26px rgba(255,94,87,.55)}
+  .drum{font-size:2.2rem;font-weight:800;text-align:center;margin-top:28vh;animation:pulse .45s infinite}
+  .winner{animation:pop .7s}
+  #confetti{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:50}
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+  @keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.12)}100%{transform:scale(1)}}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+  @media (max-width:480px){.opts{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<canvas id="confetti"></canvas>
+
+<script>
+// Gögn: kóði|nafn IS|nafn EN|höfuðborg IS|höfuðborg EN|borg IS|borg EN|svæði|erfiðleiki (1-3)
+const RAW = [
+"is|Ísland|Iceland|Reykjavík|Reykjavík|Akureyri|Akureyri|eu|1",
+"no|Noregur|Norway|Ósló|Oslo|Bergen|Bergen|eu|1",
+"se|Svíþjóð|Sweden|Stokkhólmur|Stockholm|Gautaborg|Gothenburg|eu|1",
+"dk|Danmörk|Denmark|Kaupmannahöfn|Copenhagen|Árósar|Aarhus|eu|1",
+"fi|Finnland|Finland|Helsinki|Helsinki|Tampere|Tampere|eu|1",
+"gb|Bretland|United Kingdom|London|London|Manchester|Manchester|eu|1",
+"ie|Írland|Ireland|Dublin|Dublin|Cork|Cork|eu|1",
+"fr|Frakkland|France|París|Paris|Marseille|Marseille|eu|1",
+"de|Þýskaland|Germany|Berlín|Berlin|München|Munich|eu|1",
+"es|Spánn|Spain|Madríd|Madrid|Barcelona|Barcelona|eu|1",
+"pt|Portúgal|Portugal|Lissabon|Lisbon|Portó|Porto|eu|1",
+"it|Ítalía|Italy|Róm|Rome|Mílanó|Milan|eu|1",
+"nl|Holland|Netherlands|Amsterdam|Amsterdam|Rotterdam|Rotterdam|eu|1",
+"be|Belgía|Belgium|Brussel|Brussels|Antwerpen|Antwerp|eu|2",
+"ch|Sviss|Switzerland|Bern|Bern|Zürich|Zurich|eu|2",
+"at|Austurríki|Austria|Vín|Vienna|Salzburg|Salzburg|eu|2",
+"pl|Pólland|Poland|Varsjá|Warsaw|Kraká|Kraków|eu|2",
+"cz|Tékkland|Czechia|Prag|Prague|Brno|Brno|eu|2",
+"gr|Grikkland|Greece|Aþena|Athens|Þessaloníka|Thessaloniki|eu|1",
+"hu|Ungverjaland|Hungary|Búdapest|Budapest|Debrecen|Debrecen|eu|2",
+"hr|Króatía|Croatia|Zagreb|Zagreb|Split|Split|eu|2",
+"ee|Eistland|Estonia|Tallinn|Tallinn|Tartu|Tartu|eu|2",
+"lv|Lettland|Latvia|Ríga|Riga|Daugavpils|Daugavpils|eu|3",
+"lt|Litháen|Lithuania|Vilníus|Vilnius|Kaunas|Kaunas|eu|3",
+"ua|Úkraína|Ukraine|Kænugarður|Kyiv|Lviv|Lviv|eu|2",
+"ro|Rúmenía|Romania|Búkarest|Bucharest|Cluj-Napoca|Cluj-Napoca|eu|2",
+"bg|Búlgaría|Bulgaria|Sófía|Sofia|Plovdiv|Plovdiv|eu|3",
+"rs|Serbía|Serbia|Belgrad|Belgrade|Novi Sad|Novi Sad|eu|3",
+"sk|Slóvakía|Slovakia|Bratislava|Bratislava|Košice|Košice|eu|3",
+"si|Slóvenía|Slovenia|Ljúbljana|Ljubljana|Maribor|Maribor|eu|3",
+"al|Albanía|Albania|Tírana|Tirana|Durrës|Durrës|eu|3",
+"mt|Malta|Malta|Valletta|Valletta|Birkirkara|Birkirkara|eu|3",
+"cy|Kýpur|Cyprus|Nikósía|Nicosia|Limassol|Limassol|eu|3",
+"tr|Tyrkland|Turkey|Ankara|Ankara|Istanbúl|Istanbul|as|2",
+"ru|Rússland|Russia|Moskva|Moscow|Sankti Pétursborg|Saint Petersburg|eu|1",
+"us|Bandaríkin|United States|Washington|Washington|New York|New York|na|1",
+"ca|Kanada|Canada|Ottawa|Ottawa|Toronto|Toronto|na|1",
+"mx|Mexíkó|Mexico|Mexíkóborg|Mexico City|Guadalajara|Guadalajara|na|1",
+"br|Brasilía|Brazil|Brasilía|Brasília|Ríó de Janeiró|Rio de Janeiro|sa|1",
+"ar|Argentína|Argentina|Búenos Aíres|Buenos Aires|Córdoba|Córdoba|sa|1",
+"cl|Síle|Chile|Santíagó|Santiago|Valparaíso|Valparaíso|sa|2",
+"pe|Perú|Peru|Líma|Lima|Cusco|Cusco|sa|2",
+"co|Kólumbía|Colombia|Bógóta|Bogotá|Medellín|Medellín|sa|2",
+"uy|Úrúgvæ|Uruguay|Montevídeó|Montevideo|Salto|Salto|sa|3",
+"py|Paragvæ|Paraguay|Asúnsjón|Asunción|Ciudad del Este|Ciudad del Este|sa|3",
+"cu|Kúba|Cuba|Havana|Havana|Santiago de Cuba|Santiago de Cuba|na|2",
+"jm|Jamaíka|Jamaica|Kingston|Kingston|Montego Bay|Montego Bay|na|2",
+"eg|Egyptaland|Egypt|Kaíró|Cairo|Alexandría|Alexandria|af|1",
+"ma|Marokkó|Morocco|Rabat|Rabat|Marrakess|Marrakesh|af|2",
+"za|Suður-Afríka|South Africa|Pretóría|Pretoria|Höfðaborg|Cape Town|af|2",
+"ng|Nígería|Nigeria|Abúja|Abuja|Lagos|Lagos|af|2",
+"ke|Kenía|Kenya|Naíróbí|Nairobi|Mombasa|Mombasa|af|2",
+"et|Eþíópía|Ethiopia|Addis Ababa|Addis Ababa|Gondar|Gondar|af|3",
+"gh|Gana|Ghana|Akkra|Accra|Kumasi|Kumasi|af|3",
+"mg|Madagaskar|Madagascar|Antananarívó|Antananarivo|Toamasina|Toamasina|af|3",
+"cn|Kína|China|Peking|Beijing|Sjanghæ|Shanghai|as|1",
+"jp|Japan|Japan|Tókýó|Tokyo|Ósaka|Osaka|as|1",
+"kr|Suður-Kórea|South Korea|Seúl|Seoul|Busan|Busan|as|2",
+"in|Indland|India|Nýja-Delí|New Delhi|Mumbaí|Mumbai|as|1",
+"th|Taíland|Thailand|Bangkok|Bangkok|Chiang Mai|Chiang Mai|as|1",
+"vn|Víetnam|Vietnam|Hanoí|Hanoi|Ho Chi Minh-borg|Ho Chi Minh City|as|2",
+"id|Indónesía|Indonesia|Djakarta|Jakarta|Surabaya|Surabaya|as|2",
+"ph|Filippseyjar|Philippines|Maníla|Manila|Cebu|Cebu|as|2",
+"pk|Pakistan|Pakistan|Íslamabad|Islamabad|Karachi|Karachi|as|3",
+"sa|Sádi-Arabía|Saudi Arabia|Ríjad|Riyadh|Jedda|Jeddah|as|2",
+"ae|Sameinuðu arabísku furstadæmin|United Arab Emirates|Abú Dabí|Abu Dhabi|Dúbaí|Dubai|as|2",
+"ir|Íran|Iran|Teheran|Tehran|Isfahan|Isfahan|as|2",
+"kz|Kasakstan|Kazakhstan|Astana|Astana|Almaty|Almaty|as|3",
+"mn|Mongólía|Mongolia|Úlan Bator|Ulaanbaatar|Erdenet|Erdenet|as|3",
+"np|Nepal|Nepal|Katmandú|Kathmandu|Pokhara|Pokhara|as|3",
+"bt|Bútan|Bhutan|Thimphu|Thimphu|||as|3",
+"au|Ástralía|Australia|Canberra|Canberra|Sydney|Sydney|oc|1",
+"nz|Nýja-Sjáland|New Zealand|Wellington|Wellington|Auckland|Auckland|oc|1",
+"fj|Fídjíeyjar|Fiji|Suva|Suva|Nadi|Nadi|oc|3",
+"to|Tonga|Tonga|Nuku'alofa|Nuku'alofa|||oc|3",
+"ws|Samóa|Samoa|Apía|Apia|||oc|3",
+"lu|Lúxemborg|Luxembourg|Lúxemborg|Luxembourg|||eu|3",
+"by|Hvíta-Rússland|Belarus|Minsk|Minsk|Gomel|Gomel|eu|3",
+"md|Moldóva|Moldova|Kisínev|Chișinău|Bălți|Bălți|eu|3",
+"ba|Bosnía og Hersegóvína|Bosnia and Herzegovina|Sarajevó|Sarajevo|Banja Luka|Banja Luka|eu|3",
+"me|Svartfjallaland|Montenegro|Podgorica|Podgorica|Kotor|Kotor|eu|3",
+"ge|Georgía|Georgia|Tíblisi|Tbilisi|Batumi|Batumi|as|3",
+"am|Armenía|Armenia|Jerevan|Yerevan|Gyumri|Gyumri|as|3",
+"pa|Panama|Panama|Panamaborg|Panama City|Colón|Colón|na|3",
+"cr|Kostaríka|Costa Rica|San José|San José|Limón|Limón|na|3",
+"ve|Venesúela|Venezuela|Karakas|Caracas|Maracaibo|Maracaibo|sa|2",
+"ec|Ekvador|Ecuador|Kító|Quito|Guayaquil|Guayaquil|sa|3",
+"tn|Túnis|Tunisia|Túnis|Tunis|Sfax|Sfax|af|3",
+"dz|Alsír|Algeria|Algeirsborg|Algiers|Oran|Oran|af|3",
+"tz|Tansanía|Tanzania|Dódóma|Dodoma|Dar es Salaam|Dar es Salaam|af|3",
+"sn|Senegal|Senegal|Dakar|Dakar|Touba|Touba|af|3",
+"ug|Úganda|Uganda|Kampala|Kampala|Gulu|Gulu|af|3",
+"my|Malasía|Malaysia|Kúala Lúmpúr|Kuala Lumpur|George Town|George Town|as|2",
+"iq|Írak|Iraq|Bagdad|Baghdad|Basra|Basra|as|3",
+"bd|Bangladess|Bangladesh|Dakka|Dhaka|Chittagong|Chittagong|as|3",
+"qa|Katar|Qatar|Dóha|Doha|||as|3",
+"pg|Papúa Nýja-Gínea|Papua New Guinea|Port Moresby|Port Moresby|Lae|Lae|oc|3",
+"ki|Kíribatí|Kiribati|Tarawa|Tarawa|||oc|3"
+];
+const REGS=["eu","as","af","na","sa","oc"];
+const REGN={eu:{is:"Evrópa",en:"Europe"},as:{is:"Asía",en:"Asia"},af:{is:"Afríka",en:"Africa"},na:{is:"Norður-Ameríka",en:"North America"},sa:{is:"Suður-Ameríka",en:"South America"},oc:{is:"Eyjaálfa",en:"Oceania"}};
+const C = RAW.map(r=>{const p=r.split("|");return{code:p[0],name:{is:p[1],en:p[2]},cap:{is:p[3],en:p[4]},city:p[5]?{is:p[5],en:p[6]}:null,reg:p[7],lvl:+p[8]};});
+
+const T = {
+  is:{title:"🌍 Landafræðikeppni",players:"Leikmenn",addPh:"Nafn leikmanns",add:"Bæta við",rounds:"Spurningar á mann",diff:"Erfiðleiki",
+      d1:"Auðvelt",d2:"Miðlungs",d3:"Erfitt",types:"Tegundir spurninga",tFlag:"Fánar",tCap:"Höfuðborgir",tCity:"Borgir",tCont:"Lönd",qCont:"Í hvaða heimsálfu er {x}?",start:"Byrja leik!",
+      needP:"Bættu við að minnsta kosti einum leikmanni.",turn:"Röðin er komin að",ready:"Tilbúin(n)!",
+      qFlag:"Hvaða land á þennan fána?",qCap:"Hver er höfuðborg {x}?",qCity:"Í hvaða landi er borgin {x}?",
+      right:"Rétt! 🎉",wrong:"Rangt! Rétta svarið er {x}",next:"Næsta",results:"Úrslit 🏆",winner:"Sigurvegari: {x}!",tie:"Jafntefli!",
+      again:"Spila aftur",newGame:"Nýr leikur",q:"Spurning {a} af {b}",pts:"stig",lang:"English",
+      finalRound:"🔥 Síðasta umferð! 🔥",lastQ:"⚡ Lokaspurningin! ⚡",drum:"Og sigurvegarinn er…",
+      sayFinal:"Síðasta umferð! Nú ræðst þetta. Röðin er komin að {x}.",sayTurn:"Röðin er komin að {x}.",
+      sayLast:"Lokaspurningin! Allt er undir hjá {x}!",sayDrum:"Og sigurvegarinn er…",
+      sayWin:"{x}! Til hamingju, þú ert sigurvegarinn!",sayTie:"Jafntefli! Þvílík spenna!"},
+  en:{title:"🌍 Geography Quiz",players:"Players",addPh:"Player name",add:"Add",rounds:"Questions per player",diff:"Difficulty",
+      d1:"Easy",d2:"Medium",d3:"Hard",types:"Question types",tFlag:"Flags",tCap:"Capitals",tCity:"Cities",tCont:"Countries",qCont:"Which continent is {x} in?",start:"Start game!",
+      needP:"Add at least one player.",turn:"It's the turn of",ready:"Ready!",
+      qFlag:"Which country has this flag?",qCap:"What is the capital of {x}?",qCity:"Which country is the city of {x} in?",
+      right:"Correct! 🎉",wrong:"Wrong! The answer is {x}",next:"Next",results:"Results 🏆",winner:"Winner: {x}!",tie:"It's a tie!",
+      again:"Play again",newGame:"New game",q:"Question {a} of {b}",pts:"pts",lang:"Íslenska",
+      finalRound:"🔥 Final round! 🔥",lastQ:"⚡ Final question! ⚡",drum:"And the winner is…",
+      sayFinal:"Final round! This is where it gets decided. It's {x}'s turn.",sayTurn:"It's {x}'s turn.",
+      sayLast:"The final question! Everything rides on {x}!",sayDrum:"And the winner is…",
+      sayWin:"{x}! Congratulations, you are the champion!",sayTie:"It's a tie! What a thriller!"}
+};
+
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+let S = {
+  lang: store.get("geo_lang")||"is",
+  players: JSON.parse(store.get("geo_players")||"[]"),
+  rounds:5, diff:1, types:{flag:true,cap:true,city:true,cont:true},
+  queue:[], qi:0, scores:{}, used:new Set()
+};
+const t=(k,x)=>T[S.lang][k].replace("{x}",x??"");
+const app=document.getElementById("app");
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const emoji=c=>String.fromCodePoint(...[...c.toUpperCase()].map(ch=>127397+ch.charCodeAt(0)));
+
+/* ================= HLJÓÐ (allt búið til í vafranum, engar hljóðskrár) ================= */
+const SFX={on:store.get("geo_sound")!=="off",ctx:null,master:null,loop:null};
+function ac(){
+  if(!SFX.ctx){const A=window.AudioContext||window.webkitAudioContext;if(!A)return null;
+    SFX.ctx=new A();SFX.master=SFX.ctx.createGain();SFX.master.gain.value=0.6;SFX.master.connect(SFX.ctx.destination);}
+  if(SFX.ctx.state==="suspended")SFX.ctx.resume();
+  return SFX.ctx;
+}
+function tone(f,start,dur,type="sine",vol=.3,f2){
+  const c=ac();if(!c||!SFX.on)return;
+  const o=c.createOscillator(),g=c.createGain(),t0=c.currentTime+start;
+  o.type=type;o.frequency.setValueAtTime(f,t0);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t0+dur);
+  g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(vol,t0+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  o.connect(g);g.connect(SFX.master);o.start(t0);o.stop(t0+dur+0.05);
+}
+function noise(start,dur,vol,freq,q){
+  const c=ac();if(!c||!SFX.on)return;
+  const len=Math.max(1,Math.floor(c.sampleRate*dur)),b=c.createBuffer(1,len,c.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
+  const s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain(),t0=c.currentTime+start;
+  s.buffer=b;f.type="bandpass";f.frequency.value=freq;f.Q.value=q;
+  g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(vol,t0+dur*0.2);g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  s.connect(f);f.connect(g);g.connect(SFX.master);s.start(t0);s.stop(t0+dur);
+}
+// Fagnaðarlæti: kliður + klapp + flaut
+function cheer(len=1.8,big=false){
+  noise(0,len,big?.45:.3,1600,.6);noise(0,len,big?.3:.2,800,.8);
+  const claps=big?40:16;for(let i=0;i<claps;i++)noise(Math.random()*len*.85,.06,big?.5:.35,2200+Math.random()*1800,1.5);
+  for(let i=0;i<(big?3:1);i++){const s=Math.random()*len*.5;tone(1700,s,.4,"sine",.1,2700)}
+}
+function sfxCorrect(big){
+  [523,659,784,1047].forEach((f,i)=>tone(f,i*.09,.25,"triangle",.25));
+  tone(1047,.36,.55,"triangle",.25);tone(1319,.36,.55,"sine",.12);
+  cheer(big?2.2:1.6,big);
+}
+// „Oooohhh“ frá áhorfendum: margar raddir sem renna niður
+function sfxWrong(){
+  const c=ac();if(!c||!SFX.on)return;const t0=c.currentTime;
+  [190,226,285,170,320,250].forEach((f,i)=>{
+    const o=c.createOscillator(),fl=c.createBiquadFilter(),g=c.createGain(),l=c.createOscillator(),lg=c.createGain(),s=t0+i*.04;
+    o.type="sawtooth";o.frequency.setValueAtTime(f*1.12,s);o.frequency.exponentialRampToValueAtTime(f*.8,s+1.7);
+    l.frequency.value=4+Math.random()*2;lg.gain.value=f*.02;l.connect(lg);lg.connect(o.frequency);
+    fl.type="bandpass";fl.frequency.setValueAtTime(650,s);fl.frequency.linearRampToValueAtTime(400,s+1.7);fl.Q.value=2.5;
+    g.gain.setValueAtTime(0.0001,s);g.gain.exponentialRampToValueAtTime(.09,s+.25);g.gain.setValueAtTime(.09,s+1.1);g.gain.exponentialRampToValueAtTime(0.0001,s+1.9);
+    o.connect(fl);fl.connect(g);g.connect(SFX.master);o.start(s);l.start(s);o.stop(s+2);l.stop(s+2);
+  });
+  noise(0,1.6,.05,500,1.2);
+}
+// Spennutónlist: drunur + hjartsláttur + tif sem herðist eftir því sem líður á leikinn (k = 0..1)
+function startSuspense(k){
+  stopSuspense();const c=ac();if(!c||!SFX.on)return;const t0=c.currentTime;
+  const out=c.createGain();out.gain.setValueAtTime(0.0001,t0);out.gain.exponentialRampToValueAtTime(1,t0+.6);out.connect(SFX.master);
+  const lp=c.createBiquadFilter();lp.type="lowpass";lp.frequency.setValueAtTime(300+500*k,t0);lp.frequency.linearRampToValueAtTime(900+1200*k,t0+25);lp.connect(out);
+  const trem=c.createGain();trem.gain.value=.06+.03*k;trem.connect(lp);
+  const lfo=c.createOscillator(),lg=c.createGain();lfo.frequency.value=3+7*k;lg.gain.value=.03;lfo.connect(lg);lg.connect(trem.gain);lfo.start(t0);
+  const base=55*Math.pow(2,(k*5)/12);
+  const oscs=[base,base*1.006,base*1.5,base*2.01].map((f,i)=>{const o=c.createOscillator();o.type=i<2?"sawtooth":"triangle";
+    o.frequency.setValueAtTime(f,t0);o.frequency.linearRampToValueAtTime(f*Math.pow(2,3/12),t0+30);o.connect(trem);o.start(t0);return o});
+  const beat=60/(84+72*k),startMs=performance.now();
+  SFX.loop={out,oscs,lfo,timer:null};
+  const step=()=>{
+    if(!SFX.loop)return;
+    const el=(performance.now()-startMs)/1000,b=beat*Math.max(.55,1-el/30); // hraðar á sér með tímanum
+    tone(62,0,.16,"sine",.5,40);tone(58,b*.35,.16,"sine",.3,38);
+    noise(0,.035,.1,7000,1);if(k>.6)noise(b/2,.03,.07,8500,1);
+    SFX.loop.timer=setTimeout(step,b*1000);
+  };
+  step();
+}
+function stopSuspense(){
+  const L=SFX.loop;SFX.loop=null;if(!L)return;clearTimeout(L.timer);
+  const c=SFX.ctx,t=c.currentTime;
+  try{L.out.gain.cancelScheduledValues(t);L.out.gain.setValueAtTime(Math.max(.0001,L.out.gain.value),t);L.out.gain.exponentialRampToValueAtTime(.0001,t+.25)}catch(e){}
+  L.oscs.concat(L.lfo).forEach(o=>{try{o.stop(t+.3)}catch(e){}});
+}
+function sting(){tone(110,0,.7,"sawtooth",.18,220);tone(55,0,.8,"sine",.5,45);noise(0,.9,.15,5000,.5)}
+function drumroll(d=2.6){
+  let t=0;while(t<d){noise(t,.05,.08+.35*(t/d),1800,.9);t+=Math.max(.035,.09-.05*(t/d))}
+  noise(d,1.8,.4,6000,.5);tone(55,d,.8,"sine",.6,40);
+}
+function fanfare(){
+  [392,523,659,784].forEach((f,i)=>{tone(f,i*.13,.22,"square",.12);tone(f,i*.13,.22,"triangle",.2)});
+  [523,659,784,1047].forEach(f=>{tone(f,.55,1.4,"triangle",.18);tone(f,.55,1.4,"square",.05)});
+}
+// Kynnir (talgervill vafrans). Ef tækið á ekki rödd á tungumálinu þegir hann bara.
+let VOICES=[];
+function loadVoices(){try{VOICES=speechSynthesis.getVoices()}catch(e){}}
+if(window.speechSynthesis){loadVoices();speechSynthesis.onvoiceschanged=loadVoices}
+function say(text){
+  if(!SFX.on||!window.speechSynthesis)return;
+  const code=S.lang==="is"?"is":"en";
+  const v=VOICES.find(v=>v.lang.toLowerCase().startsWith(code));if(!v)return;
+  const u=new SpeechSynthesisUtterance(text);u.voice=v;u.lang=v.lang;u.rate=1.02;u.pitch=1.1;
+  speechSynthesis.cancel();speechSynthesis.speak(u);
+}
+function toggleSound(){
+  SFX.on=!SFX.on;store.set("geo_sound",SFX.on?"on":"off");
+  if(!SFX.on){stopSuspense();try{speechSynthesis.cancel()}catch(e){}}
+  rerender();
+}
+
+/* ================= CONFETTI ================= */
+const cv=document.getElementById("confetti"),cx=cv.getContext("2d");let parts=[],raf=null;
+function sizeCv(){const r=window.devicePixelRatio||1;cv.width=innerWidth*r;cv.height=innerHeight*r;cx.setTransform(r,0,0,r,0,0)}
+sizeCv();addEventListener("resize",sizeCv);
+const COLS=["#ffb627","#2ecc71","#3498db","#e74c3c","#9b59b6","#f1c40f","#ffffff"];
+function confetti(n=80,burst=true){
+  for(let i=0;i<n;i++)parts.push({
+    x:burst?innerWidth/2+(Math.random()-.5)*80:Math.random()*innerWidth,
+    y:burst?innerHeight*.45:-20-Math.random()*80,
+    vx:burst?(Math.random()-.5)*16:(Math.random()-.5)*3,
+    vy:burst?-Math.random()*15-5:Math.random()*2+2,
+    s:Math.random()*8+5,r:Math.random()*6.28,vr:(Math.random()-.5)*.3,
+    w:Math.random()*6.28,c:COLS[(Math.random()*COLS.length)|0]});
+  if(!raf)raf=requestAnimationFrame(tick);
+}
+function tick(){
+  cx.clearRect(0,0,innerWidth,innerHeight);
+  for(const p of parts){p.vy=Math.min(p.vy+.3,6);p.vx*=.985;p.w+=.1;p.x+=p.vx+Math.sin(p.w)*.8;p.y+=p.vy;p.r+=p.vr;
+    cx.save();cx.translate(p.x,p.y);cx.rotate(p.r);cx.fillStyle=p.c;cx.fillRect(-p.s/2,-p.s/4,p.s,p.s/2);cx.restore()}
+  parts=parts.filter(p=>p.y<innerHeight+30);
+  raf=parts.length?requestAnimationFrame(tick):null;
+}
+function confettiShower(ms=4000){confetti(180,true);const iv=setInterval(()=>confetti(30,false),250);setTimeout(()=>clearInterval(iv),ms)}
+
+/* ================= SKJÁIR ================= */
+function topBtns(){return `<button class="snd" onclick="toggleSound()" aria-label="sound">${SFX.on?"🔊":"🔇"}</button><button class="lang" onclick="toggleLang()">${t("lang")}</button>`}
+function toggleLang(){S.lang=S.lang==="is"?"en":"is";store.set("geo_lang",S.lang);document.documentElement.lang=S.lang;rerender()}
+let rerender=renderSetup;
+
+function renderSetup(){
+  rerender=renderSetup;stopSuspense();
+  app.innerHTML=`${topBtns()}<h1>${t("title")}</h1>
+  <div class="card"><h2>${t("players")}</h2>
+    <div class="row"><input type="text" id="pname" placeholder="${t("addPh")}" maxlength="20"><button onclick="addP()">${t("add")}</button></div>
+    <div class="row" style="margin-top:10px">${S.players.map((p,i)=>`<span class="chip">${esc(p)} <b onclick="remP(${i})">✕</b></span>`).join("")}</div>
+  </div>
+  <div class="card"><h2>${t("rounds")}</h2><div class="row">
+    ${[3,5,10].map(n=>`<button class="${S.rounds===n?"sel":""}" onclick="S.rounds=${n};renderSetup()">${n}</button>`).join("")}</div></div>
+  <div class="card"><h2>${t("diff")}</h2><div class="row">
+    ${[1,2,3].map(n=>`<button class="${S.diff===n?"sel":""}" onclick="S.diff=${n};renderSetup()">${t("d"+n)}</button>`).join("")}</div></div>
+  <div class="card"><h2>${t("types")}</h2><div class="row">
+    ${[["flag","tFlag"],["cap","tCap"],["city","tCity"],["cont","tCont"]].map(([k,l])=>`<button class="${S.types[k]?"sel":""}" onclick="togType('${k}')">${t(l)}</button>`).join("")}</div></div>
+  <p class="muted" id="msg" style="text-align:center"></p>
+  <button class="primary" onclick="startGame()">${t("start")}</button>`;
+  document.getElementById("pname").addEventListener("keydown",e=>{if(e.key==="Enter")addP()});
+}
+function addP(){const v=document.getElementById("pname").value.trim();if(!v)return;S.players.push(v);store.set("geo_players",JSON.stringify(S.players));renderSetup();document.getElementById("pname").focus()}
+function remP(i){S.players.splice(i,1);store.set("geo_players",JSON.stringify(S.players));renderSetup()}
+function togType(k){const on=Object.values(S.types).filter(Boolean).length;if(S.types[k]&&on===1)return;S.types[k]=!S.types[k];renderSetup()}
+
+function makeQuestion(){
+  const types=Object.keys(S.types).filter(k=>S.types[k]);
+  let pool=C.filter(c=>c.lvl<=S.diff);
+  if(S.diff===3) pool=C.filter(c=>c.lvl>=2);
+  let fresh=pool.filter(c=>!S.used.has(c.code));
+  if(fresh.length<1){S.used.clear();fresh=pool}
+  let type, ans;
+  for(let tries=0;tries<50;tries++){
+    type=types[Math.floor(Math.random()*types.length)];
+    ans=fresh[Math.floor(Math.random()*fresh.length)];
+    if(type!=="city"||ans.city) break;
+  }
+  if(type==="city"&&!ans.city) type="cap";
+  S.used.add(ans.code);
+  if(type==="cont") return{type,ans,opts:shuffle(REGS.slice())};
+  let others=shuffle(C.filter(c=>c.code!==ans.code&&c.reg===ans.reg));
+  if(others.length<5) others=others.concat(shuffle(C.filter(c=>c.code!==ans.code&&c.reg!==ans.reg)));
+  const label=c=>type==="cap"?c.cap:c.name;
+  const seen=new Set([label(ans).en]);
+  const wrong=[];
+  for(const o of others){if(wrong.length===5)break;if(!seen.has(label(o).en)){seen.add(label(o).en);wrong.push(o)}}
+  return{type,ans,opts:shuffle([ans,...wrong])};
+}
+
+// Hversu langt er leikurinn kominn, og erum við í lokaumferðinni?
+const intensity=()=>S.queue.length>1?S.qi/(S.queue.length-1):1;
+const isFinal=()=>S.qi>=S.queue.length-S.players.length;
+const isLast=()=>S.qi===S.queue.length-1&&S.queue.length>1;
+
+function startGame(){
+  if(!S.players.length){document.getElementById("msg").textContent=t("needP");return}
+  ac();
+  S.scores={};S.players.forEach(p=>S.scores[p]=0);
+  S.queue=[];S.used.clear();
+  for(let r=0;r<S.rounds;r++) for(const p of S.players) S.queue.push({player:p,q:makeQuestion()});
+  S.qi=0;
+  goTurn();
+}
+function goTurn(){
+  renderTurn();
+  const p=S.queue[S.qi].player;
+  if(isLast()){sting();say(t("sayLast",p))}
+  else if(S.qi===S.queue.length-S.players.length&&S.queue.length>S.players.length){sting();say(t("sayFinal",p))}
+  else if(isFinal()){say(t("sayTurn",p))}
+}
+
+function scoreBar(active){
+  return `<div class="scores">${S.players.map(p=>`<span class="score ${p===active?"active":""}">${esc(p)}: ${S.scores[p]}</span>`).join("")}</div>`;
+}
+function banner(){return isLast()?`<div class="banner">${t("lastQ")}</div>`:(isFinal()&&S.queue.length>S.players.length?`<div class="banner">${t("finalRound")}</div>`:"")}
+function renderTurn(){
+  rerender=renderTurn;
+  const it=S.queue[S.qi];
+  app.className="wrap"+(isFinal()?" final":"");
+  app.innerHTML=`${topBtns()}<h1>${t("title")}</h1>${banner()}
+  <div class="card turn">${t("turn")}<strong>${esc(it.player)}</strong></div>
+  <button class="primary" onclick="startQuestion()">${t("ready")}</button>
+  ${scoreBar(it.player)}`;
+}
+function startQuestion(){
+  renderQuestion();
+  try{speechSynthesis.cancel()}catch(e){}
+  startSuspense(intensity());
+}
+function renderQuestion(answered){
+  rerender=()=>renderQuestion(answered);
+  const it=S.queue[S.qi],q=it.q,L=S.lang;
+  app.className="wrap"+(isFinal()?" final":"");
+  let head="";
+  if(q.type==="flag"){
+    head=`<img class="flag" src="https://flagcdn.com/w320/${q.ans.code}.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+          <div class="emoji">${emoji(q.ans.code)}</div><div class="qtext">${t("qFlag")}</div>`;
+  } else if(q.type==="cap"){
+    head=`<div class="qtext">${t("qCap",`<b>${esc(q.ans.name[L])}</b>`)}</div>`;
+  } else if(q.type==="cont"){
+    head=`<div class="qtext">${t("qCont",`<b>${esc(q.ans.name[L])}</b>`)}</div>`;
+  } else {
+    head=`<div class="qtext">${t("qCity",`<b>${esc(q.ans.city[L])}</b>`)}</div>`;
+  }
+  const lab=c=>q.type==="cont"?REGN[c][L]:q.type==="cap"?c.cap[L]:c.name[L];
+  const right=q.type==="cont"?q.ans.reg:q.ans;
+  const letters="ABCDEF";
+  const opts=q.opts.map((c,i)=>{
+    let cls="";
+    if(answered!==undefined){ if(c===right)cls="good"; else if(i===answered)cls="bad"; }
+    return `<button class="opt ${cls}" ${answered!==undefined?"disabled":""} onclick="answer(${i})"><span class="l">${letters[i]}</span>${esc(lab(c))}</button>`;
+  }).join("");
+  let res="";
+  if(answered!==undefined) res=q.opts[answered]===right?t("right"):t("wrong",esc(lab(right)));
+  app.innerHTML=`${topBtns()}<div class="progress">${T[L].q.replace("{a}",S.qi+1).replace("{b}",S.queue.length)} · ${esc(it.player)}</div>
+  ${banner()}
+  <div class="card">${head}<div class="opts">${opts}</div><div class="result">${res}</div>
+  ${answered!==undefined?`<button class="primary" onclick="nextQ()">${t("next")}</button>`:""}</div>
+  ${scoreBar(it.player)}`;
+}
+function answer(i){
+  const it=S.queue[S.qi];
+  if(it.done)return; it.done=true;
+  stopSuspense();
+  const ok=it.q.opts[i]===(it.q.type==="cont"?it.q.ans.reg:it.q.ans);
+  if(ok){S.scores[it.player]++;sfxCorrect(isFinal());confetti(isFinal()?140:70,true)}
+  else sfxWrong();
+  renderQuestion(i);
+}
+function nextQ(){S.qi++; if(S.qi>=S.queue.length) renderDrum(); else goTurn();}
+
+function renderDrum(){
+  rerender=()=>{app.innerHTML=`<div class="drum">${t("drum")}</div>`};
+  app.className="wrap";rerender();
+  say(t("sayDrum"));drumroll(2.6);
+  setTimeout(()=>{renderEnd();celebrate()},2900);
+}
+function winners(){
+  const sorted=[...S.players].sort((a,b)=>S.scores[b]-S.scores[a]);
+  const top=S.scores[sorted[0]];
+  return{sorted,win:sorted.filter(p=>S.scores[p]===top)};
+}
+function celebrate(){
+  const {win}=winners();
+  fanfare();cheer(3.2,true);confettiShower(4500);
+  setTimeout(()=>say(win.length>1&&S.players.length>1?t("sayTie"):t("sayWin",win[0])),600);
+}
+function renderEnd(){
+  rerender=renderEnd;
+  const {sorted,win}=winners();
+  const medals=["🥇","🥈","🥉"];
+  app.className="wrap";
+  app.innerHTML=`${topBtns()}<h1>${t("results")}</h1>
+  <div class="card"><div class="qtext winner">${win.length>1&&S.players.length>1?t("tie"):t("winner",esc(win[0]))}</div>
+  <table>${sorted.map((p,i)=>`<tr><td>${medals[i]||""} ${esc(p)}</td><td>${S.scores[p]} ${t("pts")}</td></tr>`).join("")}</table></div>
+  <button class="primary" onclick="startGame()">${t("again")}</button>
+  <div style="height:10px"></div>
+  <button class="primary" style="background:var(--btn);color:var(--text)" onclick="renderSetup()">${t("newGame")}</button>`;
+}
+
+document.documentElement.lang=S.lang;
+renderSetup();
+</script>
+</body>
+</html>

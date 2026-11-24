@@ -168,9 +168,12 @@ const C = RAW.map(r=>{const p=r.split("|");return{code:p[0],name:{is:p[1],en:p[2
 
 const T = {
   is:{title:"🌍 Landafræðikeppni",players:"Leikmenn",addPh:"Nafn leikmanns",add:"Bæta við",rounds:"Spurningar á mann",diff:"Erfiðleiki",
-      d1:"Auðvelt",d2:"Miðlungs",d3:"Erfitt",types:"Tegundir spurninga",tFlag:"Fánar",tCap:"Höfuðborgir",tCity:"Borgir",tCont:"Lönd",qCont:"Í hvaða heimsálfu er {x}?",start:"Byrja leik!",
+      d1:"Auðvelt",d2:"Miðlungs",d3:"Erfitt",types:"Tegundir spurninga",tFlag:"Fánar",tCap:"Höfuðborgir",tCity:"Borgir",tCont:"Heimsálfur",qCont:"{x}: Í hvaða heimsálfu er landið?",tLang:"Tungumál",tFood:"Matur",tAnimal:"Dýr",tPlace:"Frægir staðir",tSize:"Stærst & minnst",tRiver:"Ár",tMountain:"Fjöll",tForest:"Skógar",
+      qLang:"{x}: Hvaða tungumál tala flestir þar?",q_food:"🍽️ Frá hvaða landi kemur þessi réttur: {x}?",q_animal:"🐾 {x}: Í hvaða landi lifir þetta dýr villt?",q_place:"📍 Í hvaða landi er {x}?",
+      q_river:"🌊 Í hvaða landi rennur áin {x}?",q_mountain:"⛰️ Í hvaða landi er fjallið {x}?",q_forest:"🌲 Í hvaða landi er {x}?",
+      qMostPop:"👥 Hvert þessara landa er fjölmennast?",qFewPop:"👤 Hvert þessara landa er fámennast?",qBigArea:"🗺️ Hvert þessara landa er stærst að flatarmáli?",qSmallArea:"🔍 Hvert þessara landa er minnst að flatarmáli?",start:"Byrja leik!",
       needP:"Bættu við að minnsta kosti einum leikmanni.",turn:"Röðin er komin að",ready:"Tilbúin(n)!",
-      qFlag:"Hvaða land á þennan fána?",qCap:"Hver er höfuðborg {x}?",qCity:"Í hvaða landi er borgin {x}?",
+      qFlag:"Hvaða land á þennan fána?",qCap:"{x}: Hver er höfuðborgin?",qCity:"Í hvaða landi er borgin {x}?",
       right:"Rétt! 🎉",wrong:"Rangt! Rétta svarið er {x}",next:"Næsta",results:"Úrslit 🏆",winner:"Sigurvegari: {x}!",tie:"Jafntefli!",
       again:"Spila aftur",newGame:"Nýr leikur",q:"Spurning {a} af {b}",pts:"stig",lang:"English",
       finalRound:"🔥 Síðasta umferð! 🔥",lastQ:"⚡ Lokaspurningin! ⚡",drum:"Og sigurvegarinn er…",
@@ -178,7 +181,10 @@ const T = {
       sayLast:"Lokaspurningin! Allt er undir hjá {x}!",sayDrum:"Og sigurvegarinn er…",
       sayWin:"{x}! Til hamingju, þú ert sigurvegarinn!",sayTie:"Jafntefli! Þvílík spenna!"},
   en:{title:"🌍 Geography Quiz",players:"Players",addPh:"Player name",add:"Add",rounds:"Questions per player",diff:"Difficulty",
-      d1:"Easy",d2:"Medium",d3:"Hard",types:"Question types",tFlag:"Flags",tCap:"Capitals",tCity:"Cities",tCont:"Countries",qCont:"Which continent is {x} in?",start:"Start game!",
+      d1:"Easy",d2:"Medium",d3:"Hard",types:"Question types",tFlag:"Flags",tCap:"Capitals",tCity:"Cities",tCont:"Continents",qCont:"Which continent is {x} in?",tLang:"Languages",tFood:"Food",tAnimal:"Animals",tPlace:"Famous places",tSize:"Biggest & smallest",tRiver:"Rivers",tMountain:"Mountains",tForest:"Forests",
+      qLang:"What language do most people speak in {x}?",q_food:"🍽️ Which country is this dish from: {x}?",q_animal:"🐾 {x}: In which country does this animal live in the wild?",q_place:"📍 Which country is {x} in?",
+      q_river:"🌊 Which country does {x} river flow through?",q_mountain:"⛰️ Which country is {x} in?",q_forest:"🌲 Which country is {x} in?",
+      qMostPop:"👥 Which of these countries has the most people?",qFewPop:"👤 Which of these countries has the fewest people?",qBigArea:"🗺️ Which of these countries is the largest by area?",qSmallArea:"🔍 Which of these countries is the smallest by area?",start:"Start game!",
       needP:"Add at least one player.",turn:"It's the turn of",ready:"Ready!",
       qFlag:"Which country has this flag?",qCap:"What is the capital of {x}?",qCity:"Which country is the city of {x} in?",
       right:"Correct! 🎉",wrong:"Wrong! The answer is {x}",next:"Next",results:"Results 🏆",winner:"Winner: {x}!",tie:"It's a tie!",
@@ -193,7 +199,7 @@ const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},se
 let S = {
   lang: store.get("geo_lang")||"is",
   players: JSON.parse(store.get("geo_players")||"[]"),
-  rounds:5, diff:1, types:{flag:true,cap:true,city:true,cont:true},
+  rounds:5, diff:1, types:{flag:true,cap:true,city:true,cont:true,lang:true,food:true,animal:true,place:true,size:true,river:true,mountain:true,forest:true},
   queue:[], qi:0, scores:{}, used:new Set()
 };
 const t=(k,x)=>T[S.lang][k].replace("{x}",x??"");
@@ -210,23 +216,6 @@ function ac(){
   if(SFX.ctx.state==="suspended")SFX.ctx.resume();
   return SFX.ctx;
 }
-// iPhone: opna fyrir hljóð við fyrstu snertingu og láta hljóðið virka þó síminn sé á hljóðlausu
-function silentWav(){const n=800,b=new Uint8Array(44+n),v=new DataView(b.buffer),w=(o,t)=>[...t].forEach((c,i)=>b[o+i]=c.charCodeAt(0));
-  w(0,"RIFF");v.setUint32(4,36+n,true);w(8,"WAVEfmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
-  v.setUint32(24,8000,true);v.setUint32(28,8000,true);v.setUint16(32,1,true);v.setUint16(34,8,true);w(36,"data");v.setUint32(40,n,true);b.fill(128,44);
-  let s="";b.forEach(x=>s+=String.fromCharCode(x));return "data:audio/wav;base64,"+btoa(s);}
-let AUDIO_UNLOCKED=false;
-function unlockAudio(){
-  try{if(navigator.audioSession)navigator.audioSession.type="playback"}catch(e){}
-  try{if(!SFX.keep){const a=new Audio(silentWav());a.loop=true;a.setAttribute("playsinline","");a.volume=0.01;SFX.keep=a}
-      const pr=SFX.keep.play();if(pr&&pr.catch)pr.catch(()=>{})}catch(e){}
-  const c=ac();
-  if(c){try{const b=c.createBuffer(1,1,22050),src=c.createBufferSource();src.buffer=b;src.connect(c.destination);src.start(0)}catch(e){}}
-  if(!AUDIO_UNLOCKED&&window.speechSynthesis){try{const u=new SpeechSynthesisUtterance(" ");u.volume=0;speechSynthesis.speak(u)}catch(e){}}
-  AUDIO_UNLOCKED=true;
-}
-["touchend","pointerdown","click","keydown"].forEach(ev=>document.addEventListener(ev,unlockAudio,{capture:true,passive:true}));
-document.addEventListener("visibilitychange",()=>{if(!document.hidden&&SFX.ctx&&SFX.ctx.state!=="running")SFX.ctx.resume()});
 function tone(f,start,dur,type="sine",vol=.3,f2){
   const c=ac();if(!c||!SFX.on)return;
   const o=c.createOscillator(),g=c.createGain(),t0=c.currentTime+start;
@@ -315,7 +304,7 @@ function say(text){
   speechSynthesis.cancel();speechSynthesis.speak(u);
 }
 function toggleSound(){
-  SFX.on=!SFX.on;store.set("geo_sound",SFX.on?"on":"off");if(SFX.on)unlockAudio();
+  SFX.on=!SFX.on;store.set("geo_sound",SFX.on?"on":"off");
   if(!SFX.on){stopSuspense();try{speechSynthesis.cancel()}catch(e){}}
   rerender();
 }
@@ -361,7 +350,7 @@ function renderSetup(){
   <div class="card"><h2>${t("diff")}</h2><div class="row">
     ${[1,2,3].map(n=>`<button class="${S.diff===n?"sel":""}" onclick="S.diff=${n};renderSetup()">${t("d"+n)}</button>`).join("")}</div></div>
   <div class="card"><h2>${t("types")}</h2><div class="row">
-    ${[["flag","tFlag"],["cap","tCap"],["city","tCity"],["cont","tCont"]].map(([k,l])=>`<button class="${S.types[k]?"sel":""}" onclick="togType('${k}')">${t(l)}</button>`).join("")}</div></div>
+    ${[["flag","tFlag"],["cap","tCap"],["city","tCity"],["cont","tCont"],["lang","tLang"],["food","tFood"],["animal","tAnimal"],["place","tPlace"],["size","tSize"],["river","tRiver"],["mountain","tMountain"],["forest","tForest"]].map(([k,l])=>`<button class="${S.types[k]?"sel":""}" onclick="togType('${k}')">${t(l)}</button>`).join("")}</div></div>
   <p class="muted" id="msg" style="text-align:center"></p>
   <button class="primary" onclick="startGame()">${t("start")}</button>`;
   document.getElementById("pname").addEventListener("keydown",e=>{if(e.key==="Enter")addP()});
@@ -370,28 +359,218 @@ function addP(){const v=document.getElementById("pname").value.trim();if(!v)retu
 function remP(i){S.players.splice(i,1);store.set("geo_players",JSON.stringify(S.players));renderSetup()}
 function togType(k){const on=Object.values(S.types).filter(Boolean).length;if(S.types[k]&&on===1)return;S.types[k]=!S.types[k];renderSetup()}
 
+/* ================= NÝIR SPURNINGAFLOKKAR =================
+   Snið: flokkur|erfiðleiki|landskóði svars|texti IS|texti EN|lönd sem mega ekki vera rangir möguleikar (því þau gætu líka verið rétt) */
+const FACT_RAW=`food|1|it|Pizza|Pizza|
+food|1|jp|Sushi|Sushi|
+food|1|mx|Taco|Tacos|
+food|1|fr|Croissant (smjördeigshorn)|Croissant|
+food|1|gb|Fiskur og franskar (fish and chips)|Fish and chips|ie
+food|1|is|Kæstur hákarl|Fermented shark (hákarl)|
+food|1|cn|Pekingönd|Peking duck|
+food|1|th|Pad Thai|Pad Thai|
+food|2|es|Paella|Paella|
+food|2|de|Bratwurst-pylsa|Bratwurst sausage|at,ch
+food|2|kr|Kimchi|Kimchi|
+food|2|vn|Pho-súpa|Pho soup|
+food|2|gr|Moussaka|Moussaka|cy,tr
+food|2|se|Köttbullar (kjötbollur)|Köttbullar (meatballs)|
+food|2|tr|Döner kebab|Döner kebab|
+food|2|hu|Gúllassúpa|Goulash|at,cz,sk,rs
+food|2|in|Butter chicken|Butter chicken|pk,bd
+food|2|pl|Pierogi|Pierogi|ua,sk,by
+food|3|pt|Pastel de nata|Pastel de nata|br
+food|3|ca|Poutine|Poutine|us
+food|3|br|Feijoada|Feijoada|pt
+food|3|nz|Pavlova|Pavlova|au
+food|3|dk|Smørrebrød|Smørrebrød|no,se
+food|3|ma|Tagine|Tagine|dz,tn
+food|3|pe|Ceviche|Ceviche|ec,cl,mx,co
+food|3|za|Biltong|Biltong|
+animal|1|au|Kengúra|Kangaroo|
+animal|1|cn|Risapanda|Giant panda|
+animal|1|au|Kóalabjörn|Koala|
+animal|2|nz|Kívífugl|Kiwi bird|
+animal|2|mg|Lemúr|Lemur|
+animal|2|id|Kómódódreki|Komodo dragon|
+animal|2|id|Óranghútan|Orangutan|my
+animal|2|us|Skallaörn|Bald eagle|ca,mx
+animal|2|jp|Snjóapi|Snow monkey|
+animal|3|ec|Galápagos-risaskjaldbaka|Galápagos giant tortoise|
+animal|3|nz|Kakapó-páfagaukur|Kākāpō parrot|
+animal|3|au|Tasmaníudjöfull|Tasmanian devil|
+animal|3|in|Asíuljón|Asiatic lion|
+animal|3|cn|Gullapi|Golden snub-nosed monkey|
+animal|3|za|Springbokkur|Springbok|
+place|1|fr|Eiffelturninn|the Eiffel Tower|
+place|1|us|Frelsisstyttan|the Statue of Liberty|
+place|1|cn|Kínamúrinn|the Great Wall|
+place|1|it|Colosseum hringleikahúsið|the Colosseum|
+place|1|eg|Pýramídarnir í Gíza|the Pyramids of Giza|
+place|1|gb|Big Ben|Big Ben|
+place|1|it|Skakki turninn í Písa|the Leaning Tower of Pisa|
+place|1|is|Hallgrímskirkja|Hallgrímskirkja|
+place|1|is|Gullfoss|Gullfoss waterfall|
+place|1|au|Óperuhúsið í Sydney|the Sydney Opera House|
+place|2|in|Taj Mahal|the Taj Mahal|
+place|2|pe|Machu Picchu|Machu Picchu|
+place|2|br|Kristsstyttan á Corcovado-fjalli|the Christ the Redeemer statue|
+place|2|gr|Akrópólis|the Acropolis|
+place|2|es|Sagrada Família|the Sagrada Família|
+place|2|de|Brandenborgarhliðið|the Brandenburg Gate|
+place|2|dk|Litla hafmeyjan|the Little Mermaid statue|
+place|2|ru|Rauða torgið og Kreml|Red Square and the Kremlin|
+place|2|ae|Burj Khalifa|the Burj Khalifa|
+place|2|gb|Stonehenge|Stonehenge|
+place|3|be|Atomium|the Atomium|
+place|3|mx|Chichén Itzá|Chichén Itzá|
+place|3|tr|Ægisif (Hagia Sophia)|the Hagia Sophia|
+place|3|de|Neuschwanstein-kastali|Neuschwanstein Castle|
+place|3|es|Alhambra-höllin|the Alhambra|
+river|1|gb|Thames|the Thames|
+river|1|fr|Signa (Seine)|the Seine|
+river|1|is|Þjórsá|Þjórsá|
+river|1|is|Ölfusá|Ölfusá|
+river|1|eg|Níl|the Nile|et,ke,tz,ug
+river|1|br|Amazonfljót|the Amazon|pe,co,ec,ve
+river|1|us|Mississippi|the Mississippi|
+river|2|it|Tíber|the Tiber|
+river|2|cn|Jangtse|the Yangtze|
+river|2|in|Ganges|the Ganges|bd,np
+river|2|ru|Volga|the Volga|
+river|2|de|Rín|the Rhine|ch,at,nl,fr
+river|2|it|Pó|the Po|
+river|2|fr|Leira (Loire)|the Loire|
+river|3|au|Murray|the Murray|
+river|3|no|Glomma|the Glomma|
+river|3|es|Ebro|the Ebro|
+river|3|ca|Saint Lawrence-fljót|the Saint Lawrence|us
+river|3|ve|Orinoco|the Orinoco|co
+river|3|nz|Waikato|the Waikato|
+river|3|pl|Visla|the Vistula|
+river|3|ie|Shannon|the Shannon|
+mountain|1|np|Everest|Mount Everest|cn
+mountain|1|jp|Fuji|Mount Fuji|
+mountain|1|is|Hekla|Hekla|
+mountain|1|is|Herðubreið|Herðubreið|
+mountain|1|is|Snæfellsjökull|Snæfellsjökull|
+mountain|2|tz|Kilimanjaro|Kilimanjaro|ke
+mountain|2|ch|Matterhorn|the Matterhorn|it
+mountain|2|fr|Mont Blanc|Mont Blanc|it,ch
+mountain|2|gr|Ólympusfjall|Mount Olympus|cy
+mountain|2|it|Etna|Mount Etna|
+mountain|2|it|Vesúvíus|Mount Vesuvius|
+mountain|2|za|Borðfjall (Table Mountain)|Table Mountain|
+mountain|2|au|Uluru|Uluru|
+mountain|3|ar|Aconcagua|Aconcagua|cl
+mountain|3|us|Denali|Denali|ca
+mountain|3|es|Teide|Teide|
+mountain|3|gb|Ben Nevis|Ben Nevis|
+mountain|3|no|Galdhøpiggen|Galdhøpiggen|
+mountain|3|de|Zugspitze|the Zugspitze|at
+mountain|3|nz|Aoraki (Mount Cook)|Aoraki / Mount Cook|
+mountain|3|se|Kebnekaise|Kebnekaise|
+mountain|3|ru|Elbrus|Mount Elbrus|ge
+mountain|3|tr|Ararat|Mount Ararat|am,ir
+mountain|3|si|Triglav|Triglav|
+mountain|3|ec|Chimborazo|Chimborazo|
+mountain|3|mx|Popocatépetl|Popocatépetl|
+forest|1|br|Amazon-regnskógurinn|the Amazon rainforest|pe,co,ve,ec
+forest|1|is|Hallormsstaðaskógur|Hallormsstaðaskógur|
+forest|1|is|Vaglaskógur|Vaglaskógur|
+forest|1|de|Svartiskógur|the Black Forest|
+forest|1|gb|Sherwood-skógur (skógur Hróa hattar)|Sherwood Forest (Robin Hood's forest)|
+forest|2|us|Rauðviðarskógarnir (risatrén)|the giant Redwood forests|
+forest|2|jp|Arashiyama-bambusskógurinn|the Arashiyama Bamboo Grove|
+forest|2|cn|Zhangjiajie-skógurinn (Avatar-fjöllin)|Zhangjiajie Forest (the Avatar mountains)|
+forest|3|au|Daintree-regnskógurinn|the Daintree Rainforest|
+forest|3|pl|Białowieża-skógurinn|Białowieża Forest|by
+forest|3|cr|Monteverde-skýjaskógurinn|the Monteverde Cloud Forest|
+forest|3|nz|Waipoua-skógurinn (kauri-tré)|Waipoua Forest (kauri trees)|
+forest|3|bd|Sundarbans-fenjaskógurinn|the Sundarbans mangrove forest|in
+forest|3|ug|Bwindi-skógurinn (fjallagórillur)|Bwindi Forest (mountain gorillas)|
+forest|3|ca|Great Bear-regnskógurinn|the Great Bear Rainforest|us
+forest|3|fr|Fontainebleau-skógurinn|Fontainebleau Forest|
+forest|3|th|Khao Sok-regnskógurinn|the Khao Sok rainforest|`;
+const FACTS={};
+FACT_RAW.split("\n").forEach((r,i)=>{const p=r.split("|");(FACTS[p[0]]=FACTS[p[0]]||[]).push({id:i,lvl:+p[1],code:p[2],is:p[3],en:p[4],excl:p[5]?p[5].split(","):[]})});
+
+// Aðaltungumál (aðeins lönd þar sem svarið er skýrt)
+const LANG={is:["Íslenska","Icelandic"],no:["Norska","Norwegian"],se:["Sænska","Swedish"],dk:["Danska","Danish"],fi:["Finnska","Finnish"],
+fr:["Franska","French"],de:["Þýska","German"],es:["Spænska","Spanish"],pt:["Portúgalska","Portuguese"],it:["Ítalska","Italian"],nl:["Hollenska","Dutch"],
+gr:["Gríska","Greek"],pl:["Pólska","Polish"],ru:["Rússneska","Russian"],tr:["Tyrkneska","Turkish"],cn:["Kínverska","Chinese"],jp:["Japanska","Japanese"],
+kr:["Kóreska","Korean"],th:["Taílenska","Thai"],vn:["Víetnamska","Vietnamese"],br:["Portúgalska","Portuguese"],mx:["Spænska","Spanish"],ar:["Spænska","Spanish"],
+us:["Enska","English"],gb:["Enska","English"],au:["Enska","English"],eg:["Arabíska","Arabic"],sa:["Arabíska","Arabic"],ir:["Persneska","Persian"],
+hu:["Ungverska","Hungarian"],cz:["Tékkneska","Czech"],tz:["Svahílí","Swahili"],id:["Indónesíska","Indonesian"],ee:["Eistneska","Estonian"],
+ua:["Úkraínska","Ukrainian"],ro:["Rúmenska","Romanian"],hr:["Króatíska","Croatian"],co:["Spænska","Spanish"],pe:["Spænska","Spanish"],cl:["Spænska","Spanish"]};
+
+// Íbúar (milljónir, um það bil) og flatarmál (þús. km², um það bil)
+const SIZE={is:[.39,103],no:[5.5,385],se:[10.5,450],dk:[5.9,43],fi:[5.6,338],gb:[68,243],ie:[5.2,70],fr:[68,552],de:[84,357],es:[48,506],pt:[10.4,92],
+it:[59,301],nl:[17.9,42],be:[11.8,31],ch:[8.9,41],at:[9.1,84],pl:[37,313],cz:[10.9,79],gr:[10.4,132],hu:[9.6,93],hr:[3.9,57],ee:[1.4,45],lv:[1.9,65],
+lt:[2.9,65],ro:[19,238],bg:[6.4,111],rs:[6.6,88],sk:[5.4,49],si:[2.1,20],al:[2.8,29],mt:[.54,.32],cy:[1.3,9.3],tr:[85,784],ru:[144,17098],
+us:[335,9834],ca:[40,9985],mx:[129,1964],br:[212,8516],ar:[46,2780],cl:[19.8,756],pe:[34,1285],co:[52,1142],uy:[3.4,176],py:[6.9,407],cu:[10,110],
+jm:[2.8,11],eg:[110,1002],za:[63,1221],ng:[225,924],ke:[55,580],et:[126,1104],gh:[34,239],mg:[30,587],cn:[1410,9597],jp:[124,378],kr:[52,100],
+in:[1440,3287],th:[71,513],vn:[100,331],id:[280,1905],ph:[115,300],sa:[35,2150],ae:[10,84],ir:[89,1648],kz:[20,2725],mn:[3.4,1564],np:[30,147],
+bt:[.78,38],au:[27,7692],nz:[5.3,268],fj:[.93,18],to:[.1,.75],ws:[.22,2.8],ki:[.13,.81],lu:[.67,2.6]};
+const SIZEQ=[["qMostPop",0,1],["qFewPop",0,-1],["qBigArea",1,1],["qSmallArea",1,-1]];
+
+const cByCode=Object.fromEntries(C.map(c=>[c.code,c]));
+const bold=s=>`<b>${esc(s)}</b>`;
+const both=(key,fn)=>({is:T.is[key].replace("{x}",fn?fn("is"):""),en:T.en[key].replace("{x}",fn?fn("en"):"")});
+const lvlOk=l=>S.diff===1?l===1:S.diff===2?l<=2:l>=2;
+function finish(right,wrong){const opts=shuffle([right,...wrong]);return{opts,ri:opts.indexOf(right)}}
+// 5 rangir landa-möguleikar, helst úr sömu heimsálfu; sleppir löndum sem gætu líka verið rétt
+function countryOpts(ans,excl,label){
+  const bad=new Set([ans.code,...(excl||[])]);
+  const others=shuffle(C.filter(c=>!bad.has(c.code)&&c.reg===ans.reg)).concat(shuffle(C.filter(c=>!bad.has(c.code)&&c.reg!==ans.reg)));
+  const r=label(ans),seen=new Set([r.en]),wrong=[];
+  for(const o of others){if(wrong.length===5)break;const l=label(o);if(!seen.has(l.en)){seen.add(l.en);wrong.push(l)}}
+  return finish(r,wrong);
+}
+function pickFresh(list,key){
+  let f=list.filter(x=>!S.used.has(key(x)));
+  if(!f.length){list.forEach(x=>S.used.delete(key(x)));f=list}
+  const x=f[Math.floor(Math.random()*f.length)];S.used.add(key(x));return x;
+}
+
 function makeQuestion(){
   const types=Object.keys(S.types).filter(k=>S.types[k]);
-  let pool=C.filter(c=>c.lvl<=S.diff);
-  if(S.diff===3) pool=C.filter(c=>c.lvl>=2);
-  let fresh=pool.filter(c=>!S.used.has(c.code));
-  if(fresh.length<1){S.used.clear();fresh=pool}
-  let type, ans;
-  for(let tries=0;tries<50;tries++){
-    type=types[Math.floor(Math.random()*types.length)];
-    ans=fresh[Math.floor(Math.random()*fresh.length)];
-    if(type!=="city"||ans.city) break;
+  const type=types[Math.floor(Math.random()*types.length)];
+  let pool=C.filter(c=>lvlOk(c.lvl));
+  const name=c=>c.name;
+
+  if(FACTS[type]){
+    let items=FACTS[type].filter(x=>lvlOk(x.lvl));if(!items.length)items=FACTS[type];
+    const it=pickFresh(items,x=>"f"+x.id),ans=cByCode[it.code];
+    return{text:both("q_"+type,l=>bold(it[l])),...countryOpts(ans,it.excl,name)};
   }
-  if(type==="city"&&!ans.city) type="cap";
-  S.used.add(ans.code);
-  if(type==="cont") return{type,ans,opts:shuffle(REGS.slice())};
-  let others=shuffle(C.filter(c=>c.code!==ans.code&&c.reg===ans.reg));
-  if(others.length<5) others=others.concat(shuffle(C.filter(c=>c.code!==ans.code&&c.reg!==ans.reg)));
-  const label=c=>type==="cap"?c.cap:c.name;
-  const seen=new Set([label(ans).en]);
-  const wrong=[];
-  for(const o of others){if(wrong.length===5)break;if(!seen.has(label(o).en)){seen.add(label(o).en);wrong.push(o)}}
-  return{type,ans,opts:shuffle([ans,...wrong])};
+  if(type==="lang"){
+    let lp=pool.filter(c=>LANG[c.code]);if(lp.length<3)lp=C.filter(c=>LANG[c.code]);
+    const ans=pickFresh(lp,c=>"l"+c.code),mine=LANG[ans.code];
+    const langs=shuffle([...new Set(Object.values(LANG).map(v=>v.join("|")))].filter(v=>v!==mine.join("|"))).slice(0,5).map(v=>{const p=v.split("|");return{is:p[0],en:p[1]}});
+    return{text:both("qLang",l=>bold(ans.name[l])),...finish({is:mine[0],en:mine[1]},langs)};
+  }
+  if(type==="size"){
+    const [key,idx,dir]=SIZEQ[Math.floor(Math.random()*SIZEQ.length)];
+    const cands=C.filter(c=>SIZE[c.code]);
+    for(let tries=0;tries<60;tries++){
+      const six=shuffle(cands.slice()).slice(0,6);
+      const v=c=>SIZE[c.code][idx]*dir;
+      const s=six.slice().sort((a,b)=>v(b)-v(a));
+      const a=Math.abs(v(s[0])),b=Math.abs(v(s[1]));
+      if(Math.max(a,b)/Math.min(a,b)>=1.3||tries===59){
+        const opts=six.map(c=>c.name);
+        return{text:both(key),opts,ri:six.indexOf(s[0])};
+      }
+    }
+  }
+  // Upprunalegu flokkarnir
+  if(type==="city") pool=pool.filter(c=>c.city);
+  const ans=pickFresh(pool.length?pool:C,c=>c.code);
+  if(type==="flag") return{flag:ans.code,text:both("qFlag"),...countryOpts(ans,[],name)};
+  if(type==="city") return{text:both("qCity",l=>bold(ans.city[l])),...countryOpts(ans,[],name)};
+  if(type==="cont") return{text:both("qCont",l=>bold(ans.name[l])),...finish(REGN[ans.reg],REGS.filter(r=>r!==ans.reg).map(r=>REGN[r]))};
+  return{text:both("qCap",l=>bold(ans.name[l])),...countryOpts(ans,[],c=>c.cap)};
 }
 
 // Hversu langt er leikurinn kominn, og erum við í lokaumferðinni?
@@ -439,26 +618,17 @@ function renderQuestion(answered){
   const it=S.queue[S.qi],q=it.q,L=S.lang;
   app.className="wrap"+(isFinal()?" final":"");
   let head="";
-  if(q.type==="flag"){
-    head=`<img class="flag" src="https://flagcdn.com/w320/${q.ans.code}.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
-          <div class="emoji">${emoji(q.ans.code)}</div><div class="qtext">${t("qFlag")}</div>`;
-  } else if(q.type==="cap"){
-    head=`<div class="qtext">${t("qCap",`<b>${esc(q.ans.name[L])}</b>`)}</div>`;
-  } else if(q.type==="cont"){
-    head=`<div class="qtext">${t("qCont",`<b>${esc(q.ans.name[L])}</b>`)}</div>`;
-  } else {
-    head=`<div class="qtext">${t("qCity",`<b>${esc(q.ans.city[L])}</b>`)}</div>`;
-  }
-  const lab=c=>q.type==="cont"?REGN[c][L]:q.type==="cap"?c.cap[L]:c.name[L];
-  const right=q.type==="cont"?q.ans.reg:q.ans;
+  if(q.flag) head=`<img class="flag" src="https://flagcdn.com/w320/${q.flag}.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+          <div class="emoji">${emoji(q.flag)}</div>`;
+  head+=`<div class="qtext">${q.text[L]}</div>`;
   const letters="ABCDEF";
-  const opts=q.opts.map((c,i)=>{
+  const opts=q.opts.map((o,i)=>{
     let cls="";
-    if(answered!==undefined){ if(c===right)cls="good"; else if(i===answered)cls="bad"; }
-    return `<button class="opt ${cls}" ${answered!==undefined?"disabled":""} onclick="answer(${i})"><span class="l">${letters[i]}</span>${esc(lab(c))}</button>`;
+    if(answered!==undefined){ if(i===q.ri)cls="good"; else if(i===answered)cls="bad"; }
+    return `<button class="opt ${cls}" ${answered!==undefined?"disabled":""} onclick="answer(${i})"><span class="l">${letters[i]}</span>${esc(o[L])}</button>`;
   }).join("");
   let res="";
-  if(answered!==undefined) res=q.opts[answered]===right?t("right"):t("wrong",esc(lab(right)));
+  if(answered!==undefined) res=answered===q.ri?t("right"):t("wrong",esc(q.opts[q.ri][L]));
   app.innerHTML=`${topBtns()}<div class="progress">${T[L].q.replace("{a}",S.qi+1).replace("{b}",S.queue.length)} · ${esc(it.player)}</div>
   ${banner()}
   <div class="card">${head}<div class="opts">${opts}</div><div class="result">${res}</div>
@@ -469,7 +639,7 @@ function answer(i){
   const it=S.queue[S.qi];
   if(it.done)return; it.done=true;
   stopSuspense();
-  const ok=it.q.opts[i]===(it.q.type==="cont"?it.q.ans.reg:it.q.ans);
+  const ok=i===it.q.ri;
   if(ok){S.scores[it.player]++;sfxCorrect(isFinal());confetti(isFinal()?140:70,true)}
   else sfxWrong();
   renderQuestion(i);

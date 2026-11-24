@@ -53,7 +53,7 @@
   @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
   @keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.12)}100%{transform:scale(1)}}
   @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
-  @media (max-width:480px){.opts{grid-template-columns:1fr}}
+  @media (max-width:480px){.opt{padding:10px 8px;font-size:.92rem;gap:6px}.opt .l{min-width:24px}}
 </style>
 </head>
 <body>
@@ -162,8 +162,8 @@ const RAW = [
 "pg|Papúa Nýja-Gínea|Papua New Guinea|Port Moresby|Port Moresby|Lae|Lae|oc|3",
 "ki|Kíribatí|Kiribati|Tarawa|Tarawa|||oc|3"
 ];
-const REGS=["eu","as","af","na","sa","oc"];
-const REGN={eu:{is:"Evrópa",en:"Europe"},as:{is:"Asía",en:"Asia"},af:{is:"Afríka",en:"Africa"},na:{is:"Norður-Ameríka",en:"North America"},sa:{is:"Suður-Ameríka",en:"South America"},oc:{is:"Eyjaálfa",en:"Oceania"}};
+const REGS=["eu","as","af","na","sa","oc","an"];
+const REGN={eu:{is:"Evrópa",en:"Europe"},as:{is:"Asía",en:"Asia"},af:{is:"Afríka",en:"Africa"},na:{is:"Norður-Ameríka",en:"North America"},sa:{is:"Suður-Ameríka",en:"South America"},oc:{is:"Eyjaálfa",en:"Oceania"},an:{is:"Suðurskautslandið",en:"Antarctica"}};
 const C = RAW.map(r=>{const p=r.split("|");return{code:p[0],name:{is:p[1],en:p[2]},cap:{is:p[3],en:p[4]},city:p[5]?{is:p[5],en:p[6]}:null,reg:p[7],lvl:+p[8]};});
 
 const T = {
@@ -512,6 +512,7 @@ us:[335,9834],ca:[40,9985],mx:[129,1964],br:[212,8516],ar:[46,2780],cl:[19.8,756
 jm:[2.8,11],eg:[110,1002],za:[63,1221],ng:[225,924],ke:[55,580],et:[126,1104],gh:[34,239],mg:[30,587],cn:[1410,9597],jp:[124,378],kr:[52,100],
 in:[1440,3287],th:[71,513],vn:[100,331],id:[280,1905],ph:[115,300],sa:[35,2150],ae:[10,84],ir:[89,1648],kz:[20,2725],mn:[3.4,1564],np:[30,147],
 bt:[.78,38],au:[27,7692],nz:[5.3,268],fj:[.93,18],to:[.1,.75],ws:[.22,2.8],ki:[.13,.81],lu:[.67,2.6]};
+const NOPT=8; // fjöldi svarmöguleika
 const SIZEQ=[["qMostPop",0,1],["qFewPop",0,-1],["qBigArea",1,1],["qSmallArea",1,-1]];
 
 const cByCode=Object.fromEntries(C.map(c=>[c.code,c]));
@@ -524,7 +525,7 @@ function countryOpts(ans,excl,label){
   const bad=new Set([ans.code,...(excl||[])]);
   const others=shuffle(C.filter(c=>!bad.has(c.code)&&c.reg===ans.reg)).concat(shuffle(C.filter(c=>!bad.has(c.code)&&c.reg!==ans.reg)));
   const r=label(ans),seen=new Set([r.en]),wrong=[];
-  for(const o of others){if(wrong.length===5)break;const l=label(o);if(!seen.has(l.en)){seen.add(l.en);wrong.push(l)}}
+  for(const o of others){if(wrong.length===NOPT-1)break;const l=label(o);if(!seen.has(l.en)){seen.add(l.en);wrong.push(l)}}
   return finish(r,wrong);
 }
 function pickFresh(list,key){
@@ -547,14 +548,14 @@ function makeQuestion(){
   if(type==="lang"){
     let lp=pool.filter(c=>LANG[c.code]);if(lp.length<3)lp=C.filter(c=>LANG[c.code]);
     const ans=pickFresh(lp,c=>"l"+c.code),mine=LANG[ans.code];
-    const langs=shuffle([...new Set(Object.values(LANG).map(v=>v.join("|")))].filter(v=>v!==mine.join("|"))).slice(0,5).map(v=>{const p=v.split("|");return{is:p[0],en:p[1]}});
+    const langs=shuffle([...new Set(Object.values(LANG).map(v=>v.join("|")))].filter(v=>v!==mine.join("|"))).slice(0,NOPT-1).map(v=>{const p=v.split("|");return{is:p[0],en:p[1]}});
     return{text:both("qLang",l=>bold(ans.name[l])),...finish({is:mine[0],en:mine[1]},langs)};
   }
   if(type==="size"){
     const [key,idx,dir]=SIZEQ[Math.floor(Math.random()*SIZEQ.length)];
     const cands=C.filter(c=>SIZE[c.code]);
     for(let tries=0;tries<60;tries++){
-      const six=shuffle(cands.slice()).slice(0,6);
+      const six=shuffle(cands.slice()).slice(0,NOPT);
       const v=c=>SIZE[c.code][idx]*dir;
       const s=six.slice().sort((a,b)=>v(b)-v(a));
       const a=Math.abs(v(s[0])),b=Math.abs(v(s[1]));
@@ -621,7 +622,7 @@ function renderQuestion(answered){
   if(q.flag) head=`<img class="flag" src="https://flagcdn.com/w320/${q.flag}.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
           <div class="emoji">${emoji(q.flag)}</div>`;
   head+=`<div class="qtext">${q.text[L]}</div>`;
-  const letters="ABCDEF";
+  const letters="ABCDEFGH";
   const opts=q.opts.map((o,i)=>{
     let cls="";
     if(answered!==undefined){ if(i===q.ri)cls="good"; else if(i===answered)cls="bad"; }
